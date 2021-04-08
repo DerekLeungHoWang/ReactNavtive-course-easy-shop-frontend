@@ -3,7 +3,7 @@ import { View, StyleSheet, ActivityIndicator, FlatList, Dimensions, ScrollView }
 import { Container, Header, Icon, Item, Input, Text } from 'native-base';
 import { useFocusEffect } from '@react-navigation/native'
 import ProductList from './ProductList'
-import SearchProducts from './SearchedProducts';
+import SearchedProduct from './SearchedProducts';
 import Banner from '../../Shared/Banner';
 import CategoryFilter from './CategoryFilter';
 import axios from 'axios';

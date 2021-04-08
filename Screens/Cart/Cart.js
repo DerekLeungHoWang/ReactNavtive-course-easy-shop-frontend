@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useContext } from "react";
 import { View, StyleSheet, DimensionsLeft, Button, TouchableOpacity, Dimensions } from 'react-native'
 import { Container, Text, Left, Right, H1, ListItem, Thumbnail, Body } from 'native-base'
 import { connect } from 'react-redux'
@@ -7,10 +7,12 @@ import * as actions from '../../Redux/Actions/cartActions'
 import { SwipeListView } from 'react-native-swipe-list-view';
 import CartItem from './CartItem'
 import EasyButton from "../../Shared/StyledComponents/EasyButton"
+import AuthGlobal from "../../Context/store/AuthGlobal"
+
 
 var { height, width } = Dimensions.get("window")
 const Cart = (props) => {
-
+    const context = useContext(AuthGlobal);
     console.log("iin cart props =====> ", props);
     var total = 0;
     props.cartItems.forEach(cart => {
@@ -62,13 +64,23 @@ const Cart = (props) => {
                         </EasyButton>
                     </Right>
                     <Right>
-                        <EasyButton
-                            primary
-                            medium
-                            onPress={() => props.navigation.navigate('Checkout')}
-                        >
-                            <Text style={{ color: 'white' }}>Checkout</Text>
-                        </EasyButton>
+                        {context.stateUser.isAuthenticated ? (
+                            <EasyButton
+                                primary
+                                medium
+                                onPress={() => props.navigation.navigate('Checkout')}
+                            >
+                                <Text style={{ color: 'white' }}>Checkout</Text>
+                            </EasyButton>
+                        ) : (
+                            <EasyButton
+                                secondary
+                                medium
+                                onPress={() => props.navigation.navigate('Login')}
+                            >
+                                <Text style={{ color: 'white' }}>Login</Text>
+                            </EasyButton>
+                        )}
                     </Right>
                 </View>
             </Container>

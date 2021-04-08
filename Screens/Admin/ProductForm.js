@@ -18,7 +18,8 @@ import Toast from "react-native-toast-message"
 import AsyncStorage from "@react-native-community/async-storage"
 import baseURL from "../../assets/common/baseUrl"
 import axios from "axios"
-// import * as ImagePicker from "expo-image-picker"
+import * as ImagePicker from "expo-image-picker"
+import mime from "mime";
 
 const ProductForm = (props) => {
 
@@ -41,13 +42,166 @@ const ProductForm = (props) => {
     const [item, setItem] = useState(null);
 
 
+    useEffect(() => {
+
+        if (!props.route.params) {
+            console.log("NO ROUTER PARAMS");
+            setItem(null);
+        } else {
+            console.log("ROUTE PARAMS ", props.route);
+            setItem(props.route.params.item);
+            setBrand(props.route.params.item.brand);
+            setName(props.route.params.item.name);
+            setPrice(props.route.params.item.price.toString());
+            setDescription(props.route.params.item.description);
+            setMainImage(props.route.params.item.image);
+            setImage(props.route.params.item.image);
+            setCategory(props.route.params.item.category._id);
+            setCountInStock(props.route.params.item.countInStock.toString());
+        }
+
+
+        AsyncStorage.getItem("jwt")
+            .then((res) => {
+                setToken(res)
+            })
+            .catch((error) => console.log(error))
+
+        axios
+            .get(`${baseURL}categories`)
+            .then((res) => setCategories(res.data))
+            .catch((error) => alert("Error to load categories"));
+
+        (async () => {
+            if (Platform.OS !== "web") {
+                const {
+                    status,
+                } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== "granted") {
+                    alert("Sorry, we need camera roll permissions to make this work!")
+                }
+            }
+        })();
+
+
+        return () => {
+            setCategories([])
+        }
+
+    }, [])
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.All,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1
+        });
+
+        if (!result.cancelled) {
+            setMainImage(result.uri);
+            setImage(result.uri);
+        }
+    };
+
+    const addProduct = () => {
+        if (
+            name == "" ||
+            brand == "" ||
+            price == "" ||
+            description == "" ||
+            category == "" ||
+            countInStock == ""
+        ) {
+            setError("Please fill in the form correctly")
+        }
+
+        let formData = new FormData();
+
+        const newImageUri = "file:///" + image.split("file:/").join("");
+
+        formData.append("image", {
+            uri: newImageUri,
+            type: mime.getType(newImageUri),
+            name: newImageUri.split("/").pop()
+        });
+        formData.append("name", name);
+        formData.append("brand", brand);
+        formData.append("price", price);
+        formData.append("description", description);
+        formData.append("category", category);
+        formData.append("countInStock", countInStock);
+        formData.append("richDescription", richDescription);
+        formData.append("rating", rating);
+        formData.append("numReviews", numReviews);
+        formData.append("isFeatured", isFeatured);
+
+        const config = {
+            headers: {
+                "Content-Type": "multipart/form-data",
+                Authorization: `Bearer ${token}`
+            }
+        }
+
+        if(item !== null) {
+            console.log('item not null, put');
+            axios
+            .put(`${baseURL}products/${item.id}`, formData, config)
+            .then((res) => {
+                if(res.status == 200 || res.status == 201) {
+                    Toast.show({
+                        topOffset: 60,
+                        type: "success",
+                        text1: "Product successfuly updated",
+                        text2: ""
+                    });
+                    setTimeout(() => {
+                        props.navigation.navigate("Products");
+                    }, 500)
+                }
+            })
+            .catch((error) => {
+                console.log(error);
+                Toast.show({
+                    topOffset: 60,
+                        type: "error",
+                        text1: "Something went wrong",
+                        text2: "Please try again"
+                })
+            })
+        } else {
+            axios
+            .post(`${baseURL}products`, formData, config)
+            .then((res) => {
+                if(res.status == 200 || res.status == 201) {
+                    Toast.show({
+                        topOffset: 60,
+                        type: "success",
+                        text1: "New Product added",
+                        text2: ""
+                    });
+                    setTimeout(() => {
+                        props.navigation.navigate("Products");
+                    }, 500)
+                }
+            })
+            .catch((error) => {
+                Toast.show({
+                    topOffset: 60,
+                        type: "error",
+                        text1: "Something went wrong",
+                        text2: "Please try again"
+                })
+            })
+        } 
+    }
+
 
     return (
         <FormContainer title="Add Product">
             <View style={styles.imageContainer}>
-                {/* <Image style={styles.image} source={{ uri: mainImage }} /> */}
-                <TouchableOpacity  >
-                    <Text>IMAGE</Text>
+                <Image style={styles.image} source={{ uri: mainImage }} />
+                <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
+                    <Icon style={{ color: "white" }} name="camera" />
                 </TouchableOpacity>
             </View>
             <View style={styles.label}>
@@ -60,6 +214,9 @@ const ProductForm = (props) => {
                 value={brand}
                 onChangeText={(text) => setBrand(text)}
             />
+            <View style={styles.label}>
+                <Text style={{ textDecorationLine: "underline" }}>Name</Text>
+            </View>
             <Input
                 placeholder="Name"
                 name="name"
@@ -100,6 +257,32 @@ const ProductForm = (props) => {
                 value={description}
                 onChangeText={(text) => setDescription(text)}
             />
+            <Item picker>
+                <Picker
+                    mode="dropdown"
+                    iosIcon={<Icon color={"#007aff"} name="arrow-down" />}
+                    style={{ width: undefined }}
+                    placeholder="Select your Category"
+                    selectedValue={pickerValue}
+                    placeholderStyle={{ color: "#007aff" }}
+                    placeholderIconColor="#007aff"
+                    onValueChange={(e) => [setPickerValue(e), setCategory(e)]}
+                >
+                    {categories.map((c) => {
+                        return <Picker.Item key={c.id} label={c.name} value={c.id} />
+                    })}
+                </Picker>
+            </Item>
+            {err ? <Error message={err} /> : null}
+            <View style={styles.buttonContainer}>
+                <EasyButton
+                    large
+                    primary
+                    onPress={() => addProduct()}
+                >
+                    <Text style={styles.buttonText}>Confirm</Text>
+                </EasyButton>
+            </View>
         </FormContainer>)
 }
 

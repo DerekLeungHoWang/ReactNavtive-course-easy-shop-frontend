@@ -5,7 +5,7 @@ import { useFocusEffect } from "@react-navigation/native"
 import AsyncStorage from "@react-native-community/async-storage"
 import axios from "axios"
 import baseURL from "../../assets/common/baseUrl"
-
+import OrderCard from "../../Shared/OrderCard"
 import AuthGlobal from "../../Context/store/AuthGlobal"
 import { logoutUser } from "../../Context/actions/Auth.actions"
 import { useEffect } from 'react/cjs/react.development';
@@ -13,7 +13,8 @@ import { useEffect } from 'react/cjs/react.development';
 const UserProfile = (props) => {
     const context = useContext(AuthGlobal)
     const [userProfile, setUserProfile] = useState()
-
+    const [token, setToken] = useState();
+    const [orders, setOrders] = useState()
     useFocusEffect(
         useCallback(() => {
             if (
@@ -25,11 +26,31 @@ const UserProfile = (props) => {
 
             AsyncStorage.getItem("jwt")
                 .then((res) => {
+                    console.log("userProfile  ", context.stateUser.user)
+                    setToken(res)
                     axios
-                        .get(`${baseURL}users/${context.stateUser.user.sub}`, {
+                        .get(`${baseURL}users/${context.stateUser.user.userId}`, {
                             headers: { Authorization: `Bearer ${res}` },
                         })
                         .then((user) => setUserProfile(user.data))
+
+                    axios
+                        .get(`${baseURL}orders`, {
+                            headers: { Authorization: `Bearer ${res}` },
+                        })
+                        .then((x) => {
+                            const data = x.data;
+                            console.log(data)
+                            const userOrders = data.filter(
+                                (order) => {
+                                    console.log("userProfile order ", order);
+                                    return order.user._id === context.stateUser.user.userId
+                                }
+                            );
+                            setOrders(userOrders);
+                        })
+                        .catch((error) => console.log(error))
+
                 })
                 .catch((error) => console.log(error))
 
@@ -37,7 +58,7 @@ const UserProfile = (props) => {
 
             return () => {
                 setUserProfile();
-            
+                setOrders();
             }
 
         }, [context.stateUser.isAuthenticated]))
@@ -60,6 +81,21 @@ const UserProfile = (props) => {
                         AsyncStorage.removeItem("jwt"),
                         logoutUser(context.dispatch)
                     ]} />
+                </View>
+
+                <View style={styles.order}>
+                    <Text style={{ fontSize: 20 }}>My Orders</Text>
+                    <View>
+                        {orders ? (
+                            orders.map((x) => {
+                                return <OrderCard key={x.id} {...x} />;
+                            })
+                        ) : (
+                            <View style={styles.order}>
+                                <Text>You have no orders</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
             </ScrollView>

@@ -1,4 +1,5 @@
-import React from 'react'
+
+import React, { useEffect, useState } from "react"
 import { View, StyleSheet, Dimensions, ScrollView, Button } from 'react-native'
 import {
     Text,
@@ -10,17 +11,71 @@ import {
 } from 'native-base'
 import { connect } from 'react-redux'
 import * as actions from '../../../Redux/Actions/cartActions'
-
+import axios from "axios"
+import baseURL from "../../../assets/common/baseUrl"
+import Toast from "react-native-toast-message"
+import AsyncStorage from "@react-native-community/async-storage"
 var { width, height } = Dimensions.get('window')
 
 const Confirm = (props) => {
+    const [token, setToken] = useState();
+    useEffect(() => {
+        AsyncStorage.getItem("jwt")
+            .then((res) => {
+                setToken(res);
+            })
+            .catch((error) => console.log(error));
+
+       
+
+        return () => {
+
+            setToken();
+        }
+    }, [])
+
+
+
     const finalOrder = props.route.params;
     const confirmOrder = () => {
-
-        setTimeout(()=>{
-            props.clearCart();
-            props.navigation.navigate("Cart")
-        },500)
+        console.log("final ", finalOrder);
+        const order = finalOrder.order.order;
+        // delete order.status
+        // delete order.dateOrdered
+        console.log("attempting to place order !!!!!!!!!! ", order);
+        console.log(typeof order.orderItems[0].quantity);
+        console.log(baseURL);
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        };
+        axios.post(`${baseURL}orders`, order,config)
+            .then((res) => {
+                console.log('succesfully placed order  1111');
+                if (res.status == 200 || res.status == 201) {
+                    console.log('succesfully placed order');
+                    Toast.show({
+                        topOffset: 60,
+                        type: "success",
+                        text1: "Order Completed",
+                        text2: "",
+                    })
+                    setTimeout(() => {
+                        props.clearCart();
+                        props.navigation.navigate("Cart")
+                    }, 500)
+                }
+            })
+            .catch((error) => {
+                console.error(error.response.data);
+                Toast.show({
+                    topOffset: 60,
+                    type: "error",
+                    text1: "Something went wrong",
+                    text2: "Please try again",
+                })
+            })
 
     }
 
@@ -65,7 +120,7 @@ const Confirm = (props) => {
                     </View>
                     : null}
                 <View style={{ alignItems: 'center', margin: 20 }}>
-                    <Button title={'Place order'}
+                    <Button title={'Place order !'}
                         onPress={confirmOrder}
 
                     />
@@ -76,7 +131,7 @@ const Confirm = (props) => {
 
 }
 const mapDispatchToProps = (dispatch) => {
-    return{
+    return {
         clearCart: () => dispatch(actions.clearCart())
     }
 }

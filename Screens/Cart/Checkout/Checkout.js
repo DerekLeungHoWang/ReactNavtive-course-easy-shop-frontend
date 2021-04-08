@@ -6,9 +6,10 @@ import FormContainer from '../../../Shared/Form/FormContainer'
 import Input from '../../../Shared/Form/Input'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 import { connect } from 'react-redux'
+import AuthGlobal from "../../../Context/store/AuthGlobal"
 const countries = require("../../../assets/countries.json");
 const Checkout = (props) => {
-
+    const context = useContext(AuthGlobal)
     const [orderItems, setOrderItems] = useState();
     const [address, setAddress] = useState();
     const [address2, setAddress2] = useState();
@@ -19,9 +20,32 @@ const Checkout = (props) => {
     const [user, setUser] = useState();
 
     useEffect(() => {
-        setOrderItems(props.cartItems)
+        console.log("props.cartItems", props.cartItems);
+        const { cartItems } = props
+        let finalCartItems = []
+        cartItems.forEach(e => {
+            console.log("e => ", e);
+            let payload = {
+                quantity: e.quantity,
+                product: e.product.id
+            }
+            finalCartItems.push(payload)
+        })
+        console.log("finalCartItems", finalCartItems);
+        setOrderItems(finalCartItems)
 
-
+        if (context.stateUser.isAuthenticated) {
+            console.log("context: ", context);
+            setUser(context.stateUser.user.userId)
+        } else {
+            props.navigation.navigate("Cart");
+            Toast.show({
+                topOffset: 60,
+                type: "error",
+                text1: "Please Login to Checkout",
+                text2: ""
+            });
+        }
 
         return () => {
             setOrderItems();
@@ -106,7 +130,7 @@ const Checkout = (props) => {
                 </Item>
                 <View style={{ width: '80%', alignItems: "center" }}>
                     <Button title="Confirm"
-                     onPress={() => checkOut()} 
+                        onPress={() => checkOut()}
                     />
                 </View>
             </FormContainer>
